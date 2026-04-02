@@ -6,6 +6,7 @@ export async function onRequestPost(context) {
     if (!appsScriptUrl) {
       return json({ ok: false, error: 'APPS_SCRIPT_URL is missing' }, 500);
     }
+
     if (!secret) {
       return json({ ok: false, error: 'VOICE_SHARED_SECRET is missing' }, 500);
     }
@@ -19,11 +20,33 @@ export async function onRequestPost(context) {
       })
     });
 
-    const data = await res.json();
+    const rawText = await res.text();
+
+    if (!rawText || !rawText.trim()) {
+      return json({
+        ok: false,
+        error: 'Apps Script вернул пустой ответ в bootstrap'
+      }, 500);
+    }
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      return json({
+        ok: false,
+        error: 'Apps Script вернул не JSON в bootstrap',
+        raw: rawText.substring(0, 800)
+      }, 500);
+    }
+
     return json(data, res.ok ? 200 : res.status);
 
   } catch (e) {
-    return json({ ok: false, error: String(e && e.message ? e.message : e) }, 500);
+    return json({
+      ok: false,
+      error: String(e && e.message ? e.message : e)
+    }, 500);
   }
 }
 
