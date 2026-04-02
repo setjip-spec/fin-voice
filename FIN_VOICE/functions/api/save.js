@@ -6,6 +6,7 @@ export async function onRequestPost(context) {
     if (!appsScriptUrl) {
       return json({ ok: false, error: 'APPS_SCRIPT_URL is missing' }, 500);
     }
+
     if (!secret) {
       return json({ ok: false, error: 'VOICE_SHARED_SECRET is missing' }, 500);
     }
@@ -16,6 +17,7 @@ export async function onRequestPost(context) {
     let action = '';
     if (mode === 'diary') action = 'addDiary';
     if (mode === 'thought') action = 'addThought';
+
     if (!action) {
       return json({ ok: false, error: 'Unknown mode' }, 400);
     }
@@ -31,11 +33,33 @@ export async function onRequestPost(context) {
       body: JSON.stringify(payload)
     });
 
-    const data = await res.json();
+    const rawText = await res.text();
+
+    if (!rawText || !rawText.trim()) {
+      return json({
+        ok: false,
+        error: 'Apps Script вернул пустой ответ в save'
+      }, 500);
+    }
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      return json({
+        ok: false,
+        error: 'Apps Script вернул не JSON в save',
+        raw: rawText.substring(0, 800)
+      }, 500);
+    }
+
     return json(data, res.ok ? 200 : res.status);
 
   } catch (e) {
-    return json({ ok: false, error: String(e && e.message ? e.message : e) }, 500);
+    return json({
+      ok: false,
+      error: String(e && e.message ? e.message : e)
+    }, 500);
   }
 }
 
