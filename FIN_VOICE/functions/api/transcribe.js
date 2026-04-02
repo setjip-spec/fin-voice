@@ -27,12 +27,33 @@ export async function onRequestPost(context) {
       body: forward
     });
 
-    const data = await res.json();
+    const rawText = await res.text();
+
+    if (!rawText || !rawText.trim()) {
+      return json({
+        ok: false,
+        error: 'OpenAI вернул пустой ответ'
+      }, 500);
+    }
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      return json({
+        ok: false,
+        error: 'OpenAI вернул не JSON',
+        raw: rawText.substring(0, 1000)
+      }, 500);
+    }
 
     if (!res.ok) {
       return json({
         ok: false,
-        error: (data && data.error && data.error.message) ? data.error.message : `OpenAI HTTP ${res.status}`
+        error: (data && data.error && data.error.message)
+          ? data.error.message
+          : `OpenAI HTTP ${res.status}`,
+        raw: rawText.substring(0, 1000)
       }, res.status);
     }
 
@@ -42,7 +63,10 @@ export async function onRequestPost(context) {
     }, 200);
 
   } catch (e) {
-    return json({ ok: false, error: String(e && e.message ? e.message : e) }, 500);
+    return json({
+      ok: false,
+      error: String(e && e.message ? e.message : e)
+    }, 500);
   }
 }
 
